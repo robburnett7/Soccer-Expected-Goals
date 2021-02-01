@@ -1,0 +1,120 @@
+---
+title: "Soccer Expected Goals"
+author: "Rob Burnett"
+date: "1/31/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+```{r}
+library(shiny)
+library(tidyverse)
+library(gridExtra)
+library(shinydashboard)
+library(patchwork)
+
+#ui object for the Hello Shiny example
+# Define UI for app that draws a histogram ----
+ui <- dashboardPage(
+    
+    dashboardHeader(title = "English Premier League DASHBOARD"),
+    dashboardSidebar(),
+    
+    dashboardBody(
+        
+        tags$head(
+            tags$script(
+                HTML("
+          window.onload = function() {
+            resize();
+          }
+          window.onresize = function() {
+            resize();
+          }
+          Shiny.addCustomMessageHandler ('triggerResize',function (val) {
+            window.dispatchEvent(new Event('resize'));
+          });
+          function resize(){
+            var h = window.innerHeight - $('.navbar').height() - 150; // Get dashboardBody height
+            $('#box').height(h); 
+          }"
+                )
+            )
+        ),
+        box( id ="box",
+             width  = 12, 
+             height = "100%",
+             solidHeader = FALSE, 
+             status = "primary",
+             plotOutput("Bar_Chart",inline=F,width="100%",height="100%")
+        )
+        
+    ))
+
+
+
+
+
+# Define server logic required to draw a histogram ----
+server <- function(input, output) {
+    
+    df<-read.csv("/Users/robburnett/Downloads/understat.csv")
+    df$year<-as.numeric(df$year)
+    df<-df[df$league=="EPL",]
+    
+    #bar chart section
+    xpts.diff.bar.chart<-df %>% 
+        group_by(team) %>% 
+        summarise(xpt_diff.total=sum(xpts_diff,na.rm = TRUE)) %>% 
+        ggplot(aes(x = reorder(team, xpt_diff.total), y = xpt_diff.total))+
+        geom_bar(stat="identity", color='skyblue',fill='steelblue')+
+        theme(plot.title =element_text(hjust=0.5))+
+        ggtitle("EXPECTED POINT DIFFERENCE BY TEAM")+
+        xlab("")+
+        ylab("")+
+        coord_flip()
+    
+    #line chart section
+    xpts.diff.line.chart<-df %>% 
+        select(team,year,xpts_diff) %>% 
+        group_by(team,year) %>%
+        summarise(xpts_diff1=sum(xpts_diff)) %>% 
+        ggplot(aes(year,xpts_diff1,color=team))+
+        geom_line()+
+        theme(plot.title =element_text(hjust=0.5))+
+        ggtitle("TRENDS")+
+        ylab("EXPECTED POINT DIFFERENCE")+
+        xlab("YEAR")
+    
+    #histogram of scores
+    xpts.diff.histogram<-df %>%  
+        ggplot(aes(xpts_diff))+
+        geom_histogram()+
+        theme(plot.title =element_text(hjust=0.5))+
+        ggtitle("DISTRIBUTION OF EXPECTED POINT DIFFERENCE")+
+        ylab("NUMBER OF RECORDS")+
+        xlab("EXPECTED POINT DIFFERENCE")
+    
+    output$Bar_Chart<-renderPlot({xpts.diff.histogram+xpts.diff.bar.chart+xpts.diff.line.chart+plot_layout(ncol=2)})
+    
+    
+    
+
+}
+
+
+shinyApp(ui = ui, server = server)
+
+
+
+
+
+
+```
+
+
